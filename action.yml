@@ -1,0 +1,46 @@
+name: Clone Merged PR to Release Branch
+description: |
+  This workflow listens for merged PRs to the master branch and clones the PR to the release branch.
+  It also checks for the 'release' label and creates it if it does not exist.
+  Finally, it creates a new PR from the release branch to the PR branch with the 'release' label.
+inputs:
+  release-branch:
+    description: 'The branch to create the release PR'
+    required: true
+    default: 'release'
+  release-label:
+    description: 'The label to apply to the release PR'
+    required: true
+    default: 'release'
+  pr-label:
+    description: 'The label to check for on the PR'
+    required: true
+    default: 'releaseo'
+runs:
+  using: "composite"
+  steps:
+    - name: Get PR Number
+      run: |
+        echo "PR_NUMBER=${{ github.event.pull_request.number }}" >> $GITHUB_OUTPUT
+        echo "PR_TITLE=${{ github.event.pull_request.title }}" >> $GITHUB_OUTPUT
+        echo "PR_BODY=${{ github.event.pull_request.body }}" >> $GITHUB_OUTPUT
+        echo "PR_SOURCE_BRANCH=${{ github.event.pull_request.head.ref }}" >> $GITHUB_OUTPUT
+
+    - name: Check for 'release' Label
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      id: check_label
+      run: |
+        if gh label list | grep -q 'release'; then
+          echo "Label 'release' already exists."
+        else
+          gh label create "release" --color "f29559" --description "Label for release PRs"
+          echo "Label 'release' created."
+        fi
+
+    - name: Create Release PR
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        # check if 'release' label is in the repository, if not present, create it.
+        gh pr create --title "Release - ${{ github.event.pull_request.title }}" --body "${{ github.event.pull_request.body }}" --label ${{ inputs.release-branch }} --base ${{ inputs.release-branch }} --head ${{ github.event.pull_request.head.ref }}
