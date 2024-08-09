@@ -15,9 +15,10 @@ inputs:
   pr-label:
     description: 'The label to check for on the PR'
     required: true
-    default: 'releaseo'
+    default: 'release'
 runs:
   using: "composite"
+  pre-if: github.event.pull_request.merged == true && !contains(github.event.pull_request.labels.*.name, inputs.pr-label)
   steps:
     - name: Get PR Number
       run: |
